@@ -1,24 +1,51 @@
 
+import { Timestamp } from 'firebase/firestore';
+
+export interface User {
+  docId: string;
+  name: string;
+  createdAt: Timestamp;
+}
+
 export interface Reservation {
-  personName: string;
+  docId: string; // Firestore document ID of the reservation itself
+  userId: string;
+  personName: string; // Denormalized for display
   quantity: number;
+  giftItemDocId: string; // Added to link reservation to a gift item
+  createdAt?: Timestamp; // Optional because it might not be loaded initially
+  updatedAt?: Timestamp; // Optional
 }
 
 export interface GiftItem {
-  id: number;
+  docId: string; // Firestore document ID
+  originalId: number; // ID from initial constants
   name: string;
   suggestedQuantity: number;
-  reservations: Reservation[];
+  reservations: Reservation[]; // Populated after fetching from multiple collections
   emoji: string;
+  createdAt?: Timestamp; // Optional
 }
 
+// Payload to reserve or update a reservation
 export interface ReservePayload {
+  userId: string;
   personName: string;
-  itemId: number;
+  giftItemDocId: string;
   quantity: number;
 }
 
+// Payload to remove a reservation
+// We'll use userId and giftItemDocId to find the reservation to delete.
 export interface RemoveReservationPayload {
-  personName: string;
-  itemId: number;
+  userId: string;
+  giftItemDocId: string;
+}
+
+// For seeding
+export interface InitialGiftItem {
+  originalId: number;
+  name: string;
+  suggestedQuantity: number;
+  emoji: string;
 }

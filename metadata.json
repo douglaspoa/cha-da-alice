@@ -1,5 +1,6 @@
 {
   "name": "Chá de Bebê da Alice",
   "description": "Lista de presentes para o Chá de Bebê da Alice. Participe e escolha o seu presente!",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "prompt": ""
 }
