@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import LoginPage from './components/LoginPage';
 import GiftListPage from './components/GiftListPage';
+import MotherPage from './components/MotherPage';
 import { User } from './types';
 import { getOrCreateUser } from './services/api';
 import { Baby, Gift, LogOut } from 'lucide-react';
@@ -12,6 +13,7 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [showMotherPage, setShowMotherPage] = useState<boolean>(false);
 
   useEffect(() => {
     const storedUserString = localStorage.getItem(USER_STORAGE_KEY);
@@ -69,6 +71,21 @@ const App: React.FC = () => {
     setCurrentUser(null);
   }, []);
 
+  // Função para detectar se o usuário é a mãe
+  const isMother = useCallback((user: User) => {
+    const motherNames = ['carol chaves', 'carol', 'carolina chaves', 'carolina'];
+    return motherNames.includes(user.name.toLowerCase());
+  }, []);
+
+  // Função para alternar entre páginas
+  const handleSwitchToGiftList = useCallback(() => {
+    setShowMotherPage(false);
+  }, []);
+
+  const handleSwitchToMotherPage = useCallback(() => {
+    setShowMotherPage(true);
+  }, []);
+
   if (isLoading && !currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-pastel-lilac-light">
@@ -105,7 +122,22 @@ const App: React.FC = () => {
         {!currentUser ? (
           <LoginPage onLogin={handleLogin} isLoading={isLoading} />
         ) : (
-          <GiftListPage currentUser={currentUser} />
+          isMother(currentUser) ? (
+            showMotherPage ? (
+              <MotherPage 
+                currentUser={currentUser} 
+                onLogout={handleLogout} 
+                onSwitchToGiftList={handleSwitchToGiftList}
+              />
+            ) : (
+              <GiftListPage 
+                currentUser={currentUser} 
+                onSwitchToMotherPage={handleSwitchToMotherPage}
+              />
+            )
+          ) : (
+            <GiftListPage currentUser={currentUser} />
+          )
         )}
       </main>
       <footer className="w-full max-w-3xl text-center py-6 mt-auto">

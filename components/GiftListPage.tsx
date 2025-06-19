@@ -3,15 +3,16 @@ import { GiftItem, Reservation, ReservePayload, RemoveReservationPayload, User }
 import { fetchGiftItems, reserveGiftItem, removeReservation } from '../services/api';
 import GiftItemCard from './GiftItemCard';
 import Modal from './Modal';
-import { PackageOpen, XCircle, CheckCircle2, HeartHandshake, LoaderCircle, Filter, Search, Gift, Eye, EyeOff } from 'lucide-react';
+import { PackageOpen, XCircle, CheckCircle2, HeartHandshake, LoaderCircle, Filter, Search, Gift, Eye, EyeOff, Users } from 'lucide-react';
 
 interface GiftListPageProps {
   currentUser: User;
+  onSwitchToMotherPage?: () => void;
 }
 
 type FilterType = 'all' | 'available' | 'less-chosen' | 'my-reservations';
 
-const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser }) => {
+const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser, onSwitchToMotherPage }) => {
   const [items, setItems] = useState<GiftItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -256,6 +257,17 @@ const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser }) => {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-button-primary focus:border-transparent outline-none"
             />
           </div>
+
+          {/* Botão de Administração para a mãe */}
+          {onSwitchToMotherPage && (
+            <button
+              onClick={onSwitchToMotherPage}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors"
+            >
+              <Users size={20} />
+              Administração
+            </button>
+          )}
 
           {/* Filtros */}
           <div className="flex flex-wrap gap-2">

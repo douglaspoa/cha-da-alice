@@ -132,6 +132,21 @@ export async function removeReservation(payload: RemoveReservationPayload): Prom
   if (error) throw error;
 }
 
+export async function fetchAllUsers() {
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('*')
+    .order('created_at');
+
+  if (error) throw error;
+
+  return (users || []).map((user: any) => ({
+    docId: user.id,
+    name: user.name,
+    createdAt: new Date(user.created_at)
+  }));
+}
+
 export async function seedGiftItems(): Promise<void> {
   // Check if items already exist
   const { data: existingItems, error: checkError } = await supabase
