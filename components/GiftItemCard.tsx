@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { GiftItem, User } from '../types'; // User type imported
 import { Edit3, Trash2, Gift, CheckSquare, MinusSquare, LoaderCircle } from 'lucide-react';
@@ -39,19 +38,6 @@ const GiftItemCard: React.FC<GiftItemCardProps> = ({ item, currentUser, onOpenRe
            <p className="text-xl text-green-600 font-bold mb-3 flex items-center gap-2">
              <CheckSquare size={24} /> Item completo! 🎉
            </p>
-        )}
-
-        {item.reservations.length > 0 && (
-          <div className="mb-4 text-lg">
-            <h4 className="font-semibold text-text-primary mb-1">Quem vai levar:</h4>
-            <ul className="list-disc list-inside pl-2 space-y-1 max-h-32 overflow-y-auto" aria-label="Lista de pessoas que reservaram este item">
-              {item.reservations.map((r) => ( // docId of reservation can be used as key
-                <li key={r.docId || `${r.userId}-${item.docId}`} className="text-text-secondary">
-                  {r.personName} ({r.quantity} unidade{r.quantity > 1 ? 's' : ''})
-                </li>
-              ))}
-            </ul>
-          </div>
         )}
       </div>
 

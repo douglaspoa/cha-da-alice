@@ -561,7 +561,7 @@ const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser, onSwitchToMoth
             Quantidade Sugerida: <span className="font-bold">{selectedItem.suggestedQuantity}</span>
           </p>
           <p className="text-lg text-text-secondary mb-4 text-center">
-            Já reservado por outros: {selectedItem.reservations.filter(r => r.userId !== currentUser.docId).reduce((sum, r) => sum + r.quantity, 0)}
+            Quantidade Disponível: <span className="font-bold">{calculateMaxQuantity(selectedItem)}</span>
           </p>
 
           <div className="mb-6">
