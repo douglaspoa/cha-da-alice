@@ -1,10 +1,8 @@
 
-import { Timestamp } from 'firebase/firestore';
-
 export interface User {
   docId: string;
   name: string;
-  createdAt: Timestamp;
+  createdAt: Date;
 }
 
 export interface Reservation {
@@ -13,8 +11,8 @@ export interface Reservation {
   personName: string; // Denormalized for display
   quantity: number;
   giftItemDocId: string; // Added to link reservation to a gift item
-  createdAt?: Timestamp; // Optional because it might not be loaded initially
-  updatedAt?: Timestamp; // Optional
+  createdAt?: Date; // Optional because it might not be loaded initially
+  updatedAt?: Date; // Optional
 }
 
 export interface GiftItem {
@@ -24,7 +22,7 @@ export interface GiftItem {
   suggestedQuantity: number;
   reservations: Reservation[]; // Populated after fetching from multiple collections
   emoji: string;
-  createdAt?: Timestamp; // Optional
+  createdAt?: Date; // Optional
 }
 
 // Payload to reserve or update a reservation

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { LogIn, LoaderCircle } from 'lucide-react';
 
@@ -13,7 +12,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isLoading }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim() && !isLoading) {
-      onLogin(name.trim());
+      onLogin(name.trim().toLowerCase());
     }
   };
 

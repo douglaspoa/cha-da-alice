@@ -1,158 +1,183 @@
+import { supabase } from '../supabaseClient';
+import { GiftItem, Reservation, ReservePayload, RemoveReservationPayload, InitialGiftItem } from '../types';
 
-import { db, Timestamp } from '../firebaseConfig';
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  addDoc,
-  doc,
-  setDoc,
-  deleteDoc,
-  writeBatch,
-  getDoc,
-  limit,
-  orderBy
-} from 'firebase/firestore';
-import {
-  GiftItem,
-  Reservation,
-  ReservePayload,
-  RemoveReservationPayload,
-  User,
-  InitialGiftItem
-} from '../types';
-import {
-  INITIAL_GIFT_ITEMS_SEED,
-  USERS_COLLECTION,
-  GIFT_ITEMS_COLLECTION,
-  RESERVATIONS_COLLECTION
-} from '../constants';
+export async function getOrCreateUser(name: string) {
+  // Convert name to lowercase to ensure consistency
+  const normalizedName = name.toLowerCase().trim();
+  
+  const { data: users, error: fetchError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('name', normalizedName)
+    .limit(1);
 
-// --- User Management ---
-export const getOrCreateUser = async (name: string): Promise<User> => {
-  const usersRef = collection(db, USERS_COLLECTION);
-  const q = query(usersRef, where("name", "==", name), limit(1));
+  if (fetchError) throw fetchError;
 
-  const querySnapshot = await getDocs(q);
-  if (!querySnapshot.empty) {
-    const userDoc = querySnapshot.docs[0];
-    return { docId: userDoc.id, ...userDoc.data() } as User;
-  } else {
-    const newUserRef = await addDoc(usersRef, {
-      name: name,
-      createdAt: Timestamp.now(),
-    });
-    return { docId: newUserRef.id, name, createdAt: Timestamp.now() };
+  if (users && users.length > 0) {
+    // Map Supabase data to expected interface
+    return {
+      docId: users[0].id,
+      name: users[0].name,
+      createdAt: new Date(users[0].created_at)
+    };
   }
-};
 
-// --- Gift Item Seeding (for development/setup) ---
-export const seedGiftItems = async (): Promise<void> => {
-  const giftItemsRef = collection(db, GIFT_ITEMS_COLLECTION);
-  const q = query(giftItemsRef, limit(1));
-  const snapshot = await getDocs(q);
+  const { data: newUser, error: insertError } = await supabase
+    .from('users')
+    .insert({ name: normalizedName })
+    .select()
+    .single();
 
-  if (snapshot.empty) { // Only seed if the collection is empty
-    console.log("Seeding gift items...");
-    const batch = writeBatch(db);
-    INITIAL_GIFT_ITEMS_SEED.forEach((itemSeed: InitialGiftItem) => {
-      const newItemRef = doc(collection(db, GIFT_ITEMS_COLLECTION)); // Auto-generate ID
-      batch.set(newItemRef, { ...itemSeed, createdAt: Timestamp.now() });
+  if (insertError) throw insertError;
+
+  // Map Supabase data to expected interface
+  return {
+    docId: newUser.id,
+    name: newUser.name,
+    createdAt: new Date(newUser.created_at)
+  };
+}
+
+export async function fetchGiftItems(): Promise<GiftItem[]> {
+  const { data: giftItems, error: giftError } = await supabase
+    .from('gift_items')
+    .select('*')
+    .order('original_id');
+
+  if (giftError) throw giftError;
+
+  // Fetch all reservations for all gift items
+  const { data: reservations, error: reservationError } = await supabase
+    .from('reservations')
+    .select('*');
+
+  if (reservationError) throw reservationError;
+
+  // Group reservations by gift item
+  const reservationsByGiftItem = reservations?.reduce((acc: Record<string, Reservation[]>, reservation: any) => {
+    if (!acc[reservation.gift_item_id]) {
+      acc[reservation.gift_item_id] = [];
+    }
+    acc[reservation.gift_item_id].push({
+      docId: reservation.id,
+      userId: reservation.user_id,
+      personName: reservation.person_name,
+      quantity: reservation.quantity,
+      giftItemDocId: reservation.gift_item_id,
+      createdAt: reservation.created_at ? new Date(reservation.created_at) : undefined,
+      updatedAt: reservation.updated_at ? new Date(reservation.updated_at) : undefined
     });
-    await batch.commit();
-    console.log("Gift items seeded successfully.");
-  } else {
-    console.log("Gift items collection is not empty. Skipping seed.");
+    return acc;
+  }, {} as Record<string, Reservation[]>) || {};
+
+  // Combine gift items with their reservations
+  return (giftItems || []).map((item: any) => ({
+    docId: item.id,
+    originalId: item.original_id,
+    name: item.name,
+    suggestedQuantity: item.suggested_quantity,
+    emoji: item.emoji,
+    reservations: reservationsByGiftItem[item.id] || [],
+    createdAt: item.created_at ? new Date(item.created_at) : undefined
+  }));
+}
+
+export async function reserveGiftItem(payload: ReservePayload): Promise<void> {
+  // Check if user already has a reservation for this item
+  const { data: existingReservation, error: checkError } = await supabase
+    .from('reservations')
+    .select('*')
+    .eq('user_id', payload.userId)
+    .eq('gift_item_id', payload.giftItemDocId)
+    .maybeSingle();
+
+  if (checkError) {
+    throw checkError;
   }
-};
-// Call seedGiftItems once, perhaps in App.tsx on initial load in a useEffect, or manually.
-// For simplicity in this context, it can be called when api.ts is loaded,
-// but for a real app, it's better to control this more explicitly.
-// await seedGiftItems(); // Consider moving this to an explicit dev script or a one-time setup
 
-// --- Gift List and Reservations ---
-export const fetchGiftItems = async (): Promise<GiftItem[]> => {
-  // 1. Fetch all gift items
-  const giftItemsRef = collection(db, GIFT_ITEMS_COLLECTION);
-  const giftItemsQuery = query(giftItemsRef, orderBy("originalId", "asc")); // Order by originalId
-  const giftItemsSnapshot = await getDocs(giftItemsQuery);
-  
-  let fetchedItems: GiftItem[] = giftItemsSnapshot.docs.map(docSnapshot => ({
-    docId: docSnapshot.id,
-    ...(docSnapshot.data() as Omit<GiftItem, 'docId' | 'reservations'>),
-    reservations: [], // Initialize reservations array
-  }));
-
-  // 2. Fetch all reservations
-  const reservationsRef = collection(db, RESERVATIONS_COLLECTION);
-  const reservationsSnapshot = await getDocs(reservationsRef);
-  const allReservations: Reservation[] = reservationsSnapshot.docs.map(docSnapshot => ({
-    docId: docSnapshot.id,
-    ...(docSnapshot.data() as Omit<Reservation, 'docId'>),
-  }));
-
-  // 3. Combine reservations into their respective gift items
-  fetchedItems = fetchedItems.map(item => ({
-    ...item,
-    reservations: allReservations.filter(res => res.giftItemDocId === item.docId),
-  }));
-  
-  return fetchedItems;
-};
-
-export const reserveGiftItem = async (payload: ReservePayload): Promise<void> => {
-  const reservationsRef = collection(db, RESERVATIONS_COLLECTION);
-  
-  // Check if a reservation by this user for this item already exists
-  const q = query(
-    reservationsRef,
-    where("userId", "==", payload.userId),
-    where("giftItemDocId", "==", payload.giftItemDocId),
-    limit(1)
-  );
-
-  const querySnapshot = await getDocs(q);
-
-  if (!querySnapshot.empty) {
+  if (existingReservation) {
     // Update existing reservation
-    const existingReservationDoc = querySnapshot.docs[0];
-    const reservationToUpdateRef = doc(db, RESERVATIONS_COLLECTION, existingReservationDoc.id);
-    await setDoc(reservationToUpdateRef, {
-      quantity: payload.quantity,
-      personName: payload.personName, // Update personName in case it changes (though unlikely for this app)
-      updatedAt: Timestamp.now(),
-    }, { merge: true }); // Merge to only update these fields
+    const { error: updateError } = await supabase
+      .from('reservations')
+      .update({
+        quantity: payload.quantity,
+        person_name: payload.personName,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', existingReservation.id);
+
+    if (updateError) throw updateError;
   } else {
     // Create new reservation
-    await addDoc(reservationsRef, {
-      ...payload,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
+    const { error: insertError } = await supabase
+      .from('reservations')
+      .insert({
+        user_id: payload.userId,
+        person_name: payload.personName,
+        gift_item_id: payload.giftItemDocId,
+        quantity: payload.quantity
+      });
+
+    if (insertError) throw insertError;
   }
-  // The component will re-fetch items to reflect changes.
-};
+}
 
-export const removeReservation = async (payload: RemoveReservationPayload): Promise<void> => {
-  const reservationsRef = collection(db, RESERVATIONS_COLLECTION);
-  
-  // Find the reservation document by userId and giftItemDocId
-  const q = query(
-    reservationsRef,
-    where("userId", "==", payload.userId),
-    where("giftItemDocId", "==", payload.giftItemDocId),
-    limit(1)
-  );
+export async function removeReservation(payload: RemoveReservationPayload): Promise<void> {
+  const { error } = await supabase
+    .from('reservations')
+    .delete()
+    .eq('user_id', payload.userId)
+    .eq('gift_item_id', payload.giftItemDocId);
 
-  const querySnapshot = await getDocs(q);
+  if (error) throw error;
+}
 
-  if (!querySnapshot.empty) {
-    const reservationDocToDelete = querySnapshot.docs[0];
-    await deleteDoc(doc(db, RESERVATIONS_COLLECTION, reservationDocToDelete.id));
-  } else {
-    console.warn("No reservation found to delete for payload:", payload);
-    // Optionally throw an error or handle as a silent failure if the reservation doesn't exist.
+export async function seedGiftItems(): Promise<void> {
+  // Check if items already exist
+  const { data: existingItems, error: checkError } = await supabase
+    .from('gift_items')
+    .select('id')
+    .limit(1);
+
+  if (checkError) throw checkError;
+
+  // If items already exist, don't seed again
+  if (existingItems && existingItems.length > 0) {
+    return;
   }
-  // The component will re-fetch items to reflect changes.
-};
+
+  // Initial gift items data
+  const initialGiftItems: InitialGiftItem[] = [
+    { originalId: 1, name: "Fraldas P", suggestedQuantity: 10, emoji: "👶" },
+    { originalId: 2, name: "Fraldas M", suggestedQuantity: 10, emoji: "👶" },
+    { originalId: 3, name: "Fraldas G", suggestedQuantity: 8, emoji: "👶" },
+    { originalId: 4, name: "Fraldas XG", suggestedQuantity: 6, emoji: "👶" },
+    { originalId: 5, name: "Fraldas XXG", suggestedQuantity: 4, emoji: "👶" },
+    { originalId: 6, name: "Lenços Umedecidos", suggestedQuantity: 5, emoji: "🧻" },
+    { originalId: 7, name: "Pomada para Assaduras", suggestedQuantity: 3, emoji: "🧴" },
+    { originalId: 8, name: "Sabonete Líquido", suggestedQuantity: 4, emoji: "🧼" },
+    { originalId: 9, name: "Shampoo", suggestedQuantity: 3, emoji: "🧴" },
+    { originalId: 10, name: "Toalhas de Banho", suggestedQuantity: 4, emoji: "🛁" },
+    { originalId: 11, name: "Roupinhas 0-3 meses", suggestedQuantity: 6, emoji: "👕" },
+    { originalId: 12, name: "Roupinhas 3-6 meses", suggestedQuantity: 6, emoji: "👕" },
+    { originalId: 13, name: "Roupinhas 6-9 meses", suggestedQuantity: 4, emoji: "👕" },
+    { originalId: 14, name: "Meias", suggestedQuantity: 8, emoji: "🧦" },
+    { originalId: 15, name: "Gorros", suggestedQuantity: 4, emoji: "🧢" },
+    { originalId: 16, name: "Mantas", suggestedQuantity: 3, emoji: "🛏️" },
+    { originalId: 17, name: "Brinquedos", suggestedQuantity: 5, emoji: "🧸" },
+    { originalId: 18, name: "Livros Infantis", suggestedQuantity: 4, emoji: "📚" },
+    { originalId: 19, name: "Mamadeiras", suggestedQuantity: 3, emoji: "🍼" },
+    { originalId: 20, name: "Chupetas", suggestedQuantity: 6, emoji: "🍼" }
+  ];
+
+  const { error: insertError } = await supabase
+    .from('gift_items')
+    .insert(initialGiftItems.map(item => ({
+      original_id: item.originalId,
+      name: item.name,
+      suggested_quantity: item.suggestedQuantity,
+      emoji: item.emoji
+    })));
+
+  if (insertError) throw insertError;
+}

@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { GiftItem, Reservation, ReservePayload, RemoveReservationPayload, User } from '../types';
-import { fetchGiftItems, reserveGiftItem, removeReservation, seedGiftItems } from '../services/api';
+import { fetchGiftItems, reserveGiftItem, removeReservation } from '../services/api';
 import GiftItemCard from './GiftItemCard';
 import Modal from './Modal';
 import { PackageOpen, XCircle, CheckCircle2, HeartHandshake, LoaderCircle } from 'lucide-react';
@@ -24,12 +23,6 @@ const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser }) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Attempt to seed data if it's the first time (dev-friendly)
-      // In a production app, seeding should be a separate administrative process.
-      // This is a simplified approach.
-      if (items.length === 0) { // crude check, ideally check Firestore status
-          await seedGiftItems(); 
-      }
       const fetchedItems = await fetchGiftItems();
       setItems(fetchedItems);
     } catch (err: any) {
@@ -38,7 +31,7 @@ const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [items.length]); // Added items.length to re-run seed check if items somehow get cleared
+  }, []); // Removed items.length dependency since we're not seeding anymore
 
   useEffect(() => {
     loadItems();
@@ -189,8 +182,23 @@ const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser }) => {
               max={calculateMaxQuantity(selectedItem)}
               value={reservationQuantity}
               onChange={(e) => {
+                const val = e.target.value;
+                if (val === '') {
+                  setReservationQuantity(1);
+                } else {
+                  const numVal = parseInt(val, 10);
+                  if (!isNaN(numVal)) {
+                    setReservationQuantity(numVal);
+                  }
+                }
+              }}
+              onBlur={(e) => {
                 const val = parseInt(e.target.value, 10);
-                setReservationQuantity(Math.max(1, isNaN(val) ? 1 : val));
+                if (isNaN(val) || val < 1) {
+                  setReservationQuantity(1);
+                } else if (val > calculateMaxQuantity(selectedItem)) {
+                  setReservationQuantity(calculateMaxQuantity(selectedItem));
+                }
               }}
               className="w-full px-4 py-3 text-xl border border-pastel-pink rounded-lg focus:ring-2 focus:ring-button-primary focus:border-transparent outline-none transition-shadow text-center"
               aria-describedby="quantity-help"

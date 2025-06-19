@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import LoginPage from './components/LoginPage';
 import GiftListPage from './components/GiftListPage';
 import { User } from './types';
 import { getOrCreateUser } from './services/api';
 import { Baby, Gift, LogOut } from 'lucide-react';
-import { Timestamp } from './firebaseConfig'; // Import Timestamp
+
 
 const USER_STORAGE_KEY = 'chadebebe_alice_user_v2';
 
@@ -24,7 +23,7 @@ const App: React.FC = () => {
           const userToSet: User = {
             docId: parsedStoredUser.docId,
             name: parsedStoredUser.name,
-            createdAt: Timestamp.fromDate(new Date(parsedStoredUser.createdAt)), // Convert ISO string back to Timestamp
+            createdAt: new Date(parsedStoredUser.createdAt), // Convert ISO string back to Timestamp
           };
           setCurrentUser(userToSet);
         } else {
@@ -44,14 +43,14 @@ const App: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const user = await getOrCreateUser(name.trim()); // user.createdAt is a Firestore Timestamp
+        const user = await getOrCreateUser(name.trim().toLowerCase()); // user.createdAt is a Firestore Timestamp
 
         // Explicitly construct storableUser to ensure only serializable fields are included.
         // This prevents errors if 'user' object contains other non-serializable (e.g., Timestamp) fields.
         const storableUser = {
           docId: user.docId,
           name: user.name,
-          createdAt: user.createdAt.toDate().toISOString(), // Convert Timestamp to ISO string for storage
+          createdAt: user.createdAt.toISOString(), // Use the already converted Date object
         };
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(storableUser));
         
