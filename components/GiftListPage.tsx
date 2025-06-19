@@ -454,9 +454,9 @@ const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser }) => {
 
       {/* Controles de Paginação */}
       {totalPages > 1 && (
-        <div className="flex flex-col items-center gap-4 mt-8">
+        <div className="flex flex-col items-center gap-4 mt-8 max-w-full overflow-hidden">
           {/* Informações da página */}
-          <div className="text-center text-text-secondary">
+          <div className="text-center text-text-secondary px-4">
             <p className="text-lg">
               Página <span className="font-semibold text-text-primary">{currentPage}</span> de <span className="font-semibold text-text-primary">{totalPages}</span>
             </p>
@@ -466,19 +466,19 @@ const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser }) => {
           </div>
 
           {/* Botões de navegação */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-center max-w-full px-4">
             {/* Botão Anterior */}
             <button
               onClick={goToPreviousPage}
               disabled={currentPage === 1}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm whitespace-nowrap"
               aria-label="Página anterior"
             >
               ← Anterior
             </button>
 
             {/* Números das páginas */}
-            <div className="flex gap-1">
+            <div className="flex gap-1 flex-wrap justify-center">
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 let pageNumber;
                 if (totalPages <= 5) {
@@ -495,7 +495,7 @@ const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser }) => {
                   <button
                     key={pageNumber}
                     onClick={() => goToPage(pageNumber)}
-                    className={`w-10 h-10 rounded-lg font-medium transition-colors ${
+                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg font-medium transition-colors text-sm ${
                       currentPage === pageNumber
                         ? 'bg-button-primary text-white'
                         : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -512,7 +512,7 @@ const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser }) => {
             <button
               onClick={goToNextPage}
               disabled={currentPage === totalPages}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm whitespace-nowrap"
               aria-label="Próxima página"
             >
               Próximo →
@@ -520,7 +520,7 @@ const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser }) => {
           </div>
 
           {/* Seletor de itens por página */}
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
+          <div className="flex items-center gap-2 text-sm text-text-secondary px-4">
             <span>Itens por página:</span>
             <select
               value={itemsPerPage}
@@ -529,7 +529,7 @@ const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser }) => {
                 setCurrentPage(1); // Reset para primeira página
                 setItemsPerPage(newItemsPerPage);
               }}
-              className="px-2 py-1 border border-gray-300 rounded-md bg-white"
+              className="px-2 py-1 border border-gray-300 rounded-md bg-white text-sm"
             >
               <option value={4}>4</option>
               <option value={8}>8</option>
