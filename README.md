@@ -8,7 +8,7 @@ Uma aplicação web para gerenciar a lista de presentes do chá de bebê da Alic
 - **Lista de presentes**: Visualização completa de todos os presentes disponíveis
 - **Reserva de presentes**: Sistema para reservar e gerenciar presentes
 - **Filtros inteligentes**:
-  - Todos os presentes
+  - Todos os presentes 
   - Presentes disponíveis
   - Menos escolhidos (ordenados por popularidade)
   - Meus presentes reservados
@@ -23,7 +23,7 @@ Uma aplicação web para gerenciar a lista de presentes do chá de bebê da Alic
 O projeto está configurado para deploy automático no GitHub Pages. Para fazer o deploy:
 
 1. **Configure o GitHub Pages**:
-   - Vá para Settings > Pages no seu repositório
+   - Vá para Settings > Pages no seu repositório.
    - Em "Source", selecione "Deploy from a branch"
    - Selecione a branch `gh-pages` e pasta `/ (root)`
    - Clique em "Save"
