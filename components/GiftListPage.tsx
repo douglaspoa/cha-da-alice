@@ -26,6 +26,10 @@ const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showMyReservations, setShowMyReservations] = useState<boolean>(false);
   const [processingItemId, setProcessingItemId] = useState<string | null>(null);
+  
+  // Estados para paginação
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(8); // 8 itens por página (4 por linha em desktop)
 
   const loadItems = useCallback(async () => {
     setIsLoading(true);
@@ -182,6 +186,38 @@ const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser }) => {
       };
     });
   }, [items, currentUser.docId]);
+
+  // Lógica de paginação
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentItems = filteredItems.slice(startIndex, endIndex);
+
+  // Resetar página quando filtros mudam
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeFilter, searchTerm]);
+
+  // Função para navegar entre páginas
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+    // Scroll suave para o topo da lista
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   if (isLoading && items.length === 0) { // Show loading only if items are not yet loaded
     return (
@@ -404,7 +440,7 @@ const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser }) => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-        {filteredItems.map(item => (
+        {currentItems.map(item => (
           <GiftItemCard
             key={item.docId}
             item={item}
@@ -415,6 +451,94 @@ const GiftListPage: React.FC<GiftListPageProps> = ({ currentUser }) => {
           />
         ))}
       </div>
+
+      {/* Controles de Paginação */}
+      {totalPages > 1 && (
+        <div className="flex flex-col items-center gap-4 mt-8">
+          {/* Informações da página */}
+          <div className="text-center text-text-secondary">
+            <p className="text-lg">
+              Página <span className="font-semibold text-text-primary">{currentPage}</span> de <span className="font-semibold text-text-primary">{totalPages}</span>
+            </p>
+            <p className="text-sm">
+              Mostrando {startIndex + 1}-{Math.min(endIndex, filteredItems.length)} de {filteredItems.length} presente{filteredItems.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+
+          {/* Botões de navegação */}
+          <div className="flex items-center gap-2">
+            {/* Botão Anterior */}
+            <button
+              onClick={goToPreviousPage}
+              disabled={currentPage === 1}
+              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              aria-label="Página anterior"
+            >
+              ← Anterior
+            </button>
+
+            {/* Números das páginas */}
+            <div className="flex gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNumber;
+                if (totalPages <= 5) {
+                  pageNumber = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNumber = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNumber = totalPages - 4 + i;
+                } else {
+                  pageNumber = currentPage - 2 + i;
+                }
+
+                return (
+                  <button
+                    key={pageNumber}
+                    onClick={() => goToPage(pageNumber)}
+                    className={`w-10 h-10 rounded-lg font-medium transition-colors ${
+                      currentPage === pageNumber
+                        ? 'bg-button-primary text-white'
+                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                    aria-label={`Ir para página ${pageNumber}`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Botão Próximo */}
+            <button
+              onClick={goToNextPage}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              aria-label="Próxima página"
+            >
+              Próximo →
+            </button>
+          </div>
+
+          {/* Seletor de itens por página */}
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
+            <span>Itens por página:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                const newItemsPerPage = parseInt(e.target.value);
+                setCurrentPage(1); // Reset para primeira página
+                setItemsPerPage(newItemsPerPage);
+              }}
+              className="px-2 py-1 border border-gray-300 rounded-md bg-white"
+            >
+              <option value={4}>4</option>
+              <option value={8}>8</option>
+              <option value={12}>12</option>
+              <option value={16}>16</option>
+            </select>
+          </div>
+        </div>
+      )}
 
       {showModal && selectedItem && (
         <Modal onClose={handleCloseModal}>
