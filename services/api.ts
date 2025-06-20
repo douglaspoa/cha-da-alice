@@ -196,3 +196,39 @@ export async function seedGiftItems(): Promise<void> {
 
   if (insertError) throw insertError;
 }
+
+export async function addGiftItem(item: { name: string; emoji: string; suggestedQuantity: number }) {
+  // Get the next original_id
+  const { data: lastItem, error: fetchError } = await supabase
+    .from('gift_items')
+    .select('original_id')
+    .order('original_id', { ascending: false })
+    .limit(1);
+
+  if (fetchError) throw fetchError;
+
+  const nextOriginalId = (lastItem && lastItem.length > 0 ? lastItem[0].original_id : 0) + 1;
+
+  const { data: newItem, error: insertError } = await supabase
+    .from('gift_items')
+    .insert({
+      original_id: nextOriginalId,
+      name: item.name.trim(),
+      suggested_quantity: item.suggestedQuantity,
+      emoji: item.emoji
+    })
+    .select()
+    .single();
+
+  if (insertError) throw insertError;
+
+  return {
+    docId: newItem.id,
+    originalId: newItem.original_id,
+    name: newItem.name,
+    suggestedQuantity: newItem.suggested_quantity,
+    emoji: newItem.emoji,
+    reservations: [],
+    createdAt: newItem.created_at ? new Date(newItem.created_at) : undefined
+  };
+}
