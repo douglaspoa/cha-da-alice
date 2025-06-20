@@ -31,13 +31,15 @@ const MotherPage: React.FC<MotherPageProps> = ({ currentUser, onLogout, onSwitch
   
   // Estados para o modal de adicionar item
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
-  const [newItem, setNewItem] = useState({
+  const [newItem, setNewItem] = useState<{ name: string; emoji: string; suggestedQuantity: number }>({
     name: '',
     emoji: '🎁',
     suggestedQuantity: 1
   });
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [feedbackMessage, setFeedbackMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const [selectedUserDetails, setSelectedUserDetails] = useState<{user: User, items: GiftItem[]} | null>(null);
+  const [showUserDetailsModal, setShowUserDetailsModal] = useState<boolean>(false);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -96,9 +98,14 @@ const MotherPage: React.FC<MotherPageProps> = ({ currentUser, onLogout, onSwitch
     }
   };
 
-  const handleCloseModal = () => {
-    setShowAddModal(false);
-    setNewItem({ name: '', emoji: '🎁', suggestedQuantity: 1 });
+  const handleViewUserDetails = (user: User) => {
+    // Encontrar os itens que este usuário reservou
+    const userItems = items.filter(item => 
+      item.reservations.some(reservation => reservation.userId === user.docId)
+    );
+    
+    setSelectedUserDetails({ user, items: userItems });
+    setShowUserDetailsModal(true);
   };
 
   // Lista de emojis para escolher
@@ -305,13 +312,22 @@ const MotherPage: React.FC<MotherPageProps> = ({ currentUser, onLogout, onSwitch
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-3">
-                            <span className="text-sm text-text-secondary">
-                              {hasReservations 
-                                ? `${userReservation!.reservations.length} presente${userReservation!.reservations.length !== 1 ? 's' : ''}`
-                                : '0 presentes'
-                              }
-                            </span>
+                          <td className="px-4 py-3 text-sm text-gray-700">
+                            {hasReservations ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-green-600 font-medium">
+                                  {userReservation!.reservations.length} presente{userReservation!.reservations.length !== 1 ? 's' : ''}
+                                </span>
+                                <button
+                                  onClick={() => handleViewUserDetails(user)}
+                                  className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 transition-colors"
+                                >
+                                  Ver Presentes
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-gray-500 italic">Sem reservas</span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-center">
                             {hasReservations ? (
@@ -387,92 +403,145 @@ const MotherPage: React.FC<MotherPageProps> = ({ currentUser, onLogout, onSwitch
           </div>
         </div>
 
-        {/* Modal para adicionar novo item */}
+        {/* Modal para adicionar item */}
         {showAddModal && (
-          <Modal onClose={handleCloseModal}>
-            <h3 className="text-3xl font-semibold mb-6 text-text-primary text-center">
-              🎁 Adicionar Novo Presente 🎁
-            </h3>
-            
-            <div className="space-y-4">
-              {/* Nome do presente */}
-              <div>
-                <label htmlFor="itemName" className="block text-lg text-text-secondary mb-2">
-                  Nome do Presente
-                </label>
-                <input
-                  id="itemName"
-                  type="text"
-                  value={newItem.name}
-                  onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                  placeholder="Ex: Roupinhas, Brinquedos, Fraldas..."
-                  className="w-full px-4 py-3 text-lg border border-pastel-pink rounded-lg focus:ring-2 focus:ring-button-primary focus:border-transparent outline-none transition-shadow"
-                />
-              </div>
-
-              {/* Emoji */}
-              <div>
-                <label className="block text-lg text-text-secondary mb-2">
-                  Emoji do Presente
-                </label>
-                <div className="grid grid-cols-8 gap-2 max-h-32 overflow-y-auto p-2 border border-gray-200 rounded-lg">
-                  {emojiOptions.map((emoji, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setNewItem({ ...newItem, emoji })}
-                      className={`w-10 h-10 text-2xl rounded-lg transition-colors ${
-                        newItem.emoji === emoji 
-                          ? 'bg-button-primary text-white' 
-                          : 'bg-gray-100 hover:bg-gray-200'
-                      }`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
+          <Modal onClose={() => setShowAddModal(false)}>
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-xl font-bold mb-4">Adicionar Novo Presente</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nome do Presente
+                  </label>
+                  <input
+                    type="text"
+                    value={newItem.name}
+                    onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Ex: Roupinha, Brinquedo..."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Emoji
+                  </label>
+                  <div className="grid grid-cols-8 gap-2">
+                    {emojiOptions.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setNewItem({...newItem, emoji})}
+                        className={`p-2 text-xl rounded ${
+                          newItem.emoji === emoji 
+                            ? 'bg-purple-100 border-2 border-purple-500' 
+                            : 'bg-gray-100 hover:bg-gray-200'
+                        }`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Quantidade Sugerida
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newItem.suggestedQuantity}
+                    onChange={(e) => setNewItem({...newItem, suggestedQuantity: parseInt(e.target.value) || 1})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
                 </div>
               </div>
-
-              {/* Quantidade sugerida */}
-              <div>
-                <label htmlFor="suggestedQuantity" className="block text-lg text-text-secondary mb-2">
-                  Quantidade Sugerida
-                </label>
-                <input
-                  id="suggestedQuantity"
-                  type="number"
-                  min="1"
-                  value={newItem.suggestedQuantity}
-                  onChange={(e) => setNewItem({ ...newItem, suggestedQuantity: parseInt(e.target.value) || 1 })}
-                  className="w-full px-4 py-3 text-lg border border-pastel-pink rounded-lg focus:ring-2 focus:ring-button-primary focus:border-transparent outline-none transition-shadow"
-                />
+              
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                  disabled={isSubmitting}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleAddItem}
+                  disabled={!newItem.name.trim() || isSubmitting}
+                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Adicionando...' : 'Adicionar'}
+                </button>
               </div>
             </div>
+          </Modal>
+        )}
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
-              <button
-                onClick={handleAddItem}
-                disabled={isSubmitting || !newItem.name.trim() || newItem.suggestedQuantity <= 0}
-                className="bg-button-primary hover:bg-button-primary-hover text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-xl flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-                    Adicionando...
-                  </>
-                ) : (
-                  <>
-                    <Plus size={24} />
-                    Adicionar Presente
-                  </>
-                )}
-              </button>
-              <button
-                onClick={handleCloseModal}
-                disabled={isSubmitting}
-                className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-xl flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                Cancelar
-              </button>
+        {/* Modal de detalhes dos presentes do usuário */}
+        {showUserDetailsModal && selectedUserDetails && (
+          <Modal onClose={() => setShowUserDetailsModal(false)}>
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-gray-800">
+                  Presentes de {selectedUserDetails.user.name}
+                </h3>
+                <button
+                  onClick={() => setShowUserDetailsModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {selectedUserDetails.items.length > 0 ? (
+                <div className="space-y-4">
+                  <p className="text-gray-600 mb-4">
+                    {selectedUserDetails.user.name} reservou {selectedUserDetails.items.length} presente{selectedUserDetails.items.length !== 1 ? 's' : ''}:
+                  </p>
+                  
+                  <div className="grid gap-3">
+                    {selectedUserDetails.items.map((item) => {
+                      const userReservation = item.reservations.find(r => r.userId === selectedUserDetails.user.docId);
+                      return (
+                        <div key={item.docId} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{item.emoji}</span>
+                            <div className="flex-1">
+                              <h4 className="font-medium text-gray-800">{item.name}</h4>
+                              <p className="text-sm text-gray-600">
+                                Quantidade reservada: {userReservation?.quantity || 0}
+                              </p>
+                              {userReservation?.note && (
+                                <p className="text-sm text-gray-500 mt-1">
+                                  <span className="font-medium">Observação:</span> {userReservation.note}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-4">🎁</div>
+                  <p className="text-gray-600">
+                    {selectedUserDetails.user.name} ainda não reservou nenhum presente.
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => setShowUserDetailsModal(false)}
+                  className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  Fechar
+                </button>
+              </div>
             </div>
           </Modal>
         )}
