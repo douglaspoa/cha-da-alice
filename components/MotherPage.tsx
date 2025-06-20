@@ -27,7 +27,6 @@ const MotherPage: React.FC<MotherPageProps> = ({ currentUser, onLogout, onSwitch
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [showDetails, setShowDetails] = useState<boolean>(false);
   
   // Estados para o modal de adicionar item
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -254,14 +253,6 @@ const MotherPage: React.FC<MotherPageProps> = ({ currentUser, onLogout, onSwitch
           <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
             <div className="flex flex-col sm:flex-row gap-2">
               <button
-                onClick={() => setShowDetails(!showDetails)}
-                className="flex items-center gap-2 px-4 py-2 bg-button-primary hover:bg-button-primary-hover text-white rounded-lg transition-colors"
-              >
-                {showDetails ? <EyeOff size={20} /> : <Eye size={20} />}
-                {showDetails ? 'Ocultar Detalhes' : 'Ver Detalhes'}
-              </button>
-
-              <button
                 onClick={() => setShowAddModal(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors"
               >
@@ -277,18 +268,16 @@ const MotherPage: React.FC<MotherPageProps> = ({ currentUser, onLogout, onSwitch
               <table className="w-full">
                 <thead className="bg-gradient-to-r from-pink-50 to-purple-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-text-primary">Convidado</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-text-primary">Presentes</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-text-primary">Total de Itens</th>
-                    {showDetails && (
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-text-primary">Detalhes</th>
-                    )}
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Convidado</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Presentes Reservados</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Total de Itens</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {allUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={showDetails ? 4 : 3} className="px-4 py-8 text-center text-text-secondary">
+                      <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
                         Nenhum convidado cadastrado ainda. 🧸
                       </td>
                     </tr>
@@ -304,63 +293,46 @@ const MotherPage: React.FC<MotherPageProps> = ({ currentUser, onLogout, onSwitch
                               <div className="w-8 h-8 bg-gradient-to-r from-pink-400 to-purple-400 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                                 {user.name.charAt(0).toUpperCase()}
                               </div>
-                              <span className="ml-3 font-medium text-text-primary">{user.name}</span>
-                              {!hasReservations && (
-                                <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                                  Sem reservas
-                                </span>
-                              )}
+                              <div className="ml-3">
+                                <span className="font-medium text-gray-800">{user.name}</span>
+                                {!hasReservations && (
+                                  <div className="text-xs text-yellow-600 mt-1">
+                                    Sem reservas
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-700">
+                          <td className="px-4 py-3 text-center">
                             {hasReservations ? (
-                              <div className="flex items-center gap-2">
-                                <span className="text-green-600 font-medium">
-                                  {userReservation!.reservations.length} presente{userReservation!.reservations.length !== 1 ? 's' : ''}
-                                </span>
-                                <button
-                                  onClick={() => handleViewUserDetails(user)}
-                                  className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 transition-colors"
-                                >
-                                  Ver Presentes
-                                </button>
-                              </div>
+                              <span className="text-green-600 font-medium">
+                                {userReservation!.reservations.length} presente{userReservation!.reservations.length !== 1 ? 's' : ''}
+                              </span>
                             ) : (
-                              <span className="text-gray-500 italic">Sem reservas</span>
+                              <span className="text-gray-400">-</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-center">
                             {hasReservations ? (
-                              <span className="bg-pink-100 text-pink-800 px-2 py-1 rounded-full text-sm font-medium">
+                              <span className="bg-pink-100 text-pink-800 px-3 py-1 rounded-full text-sm font-medium">
                                 {userReservation!.totalItems} itens
                               </span>
                             ) : (
-                              <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-sm font-medium">
-                                0 itens
-                              </span>
+                              <span className="text-gray-400">-</span>
                             )}
                           </td>
-                          {showDetails && (
-                            <td className="px-4 py-3">
-                              {hasReservations ? (
-                                <div className="space-y-1">
-                                  {userReservation!.reservations.map((reservation, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 text-sm">
-                                      <span className="text-lg">{reservation.itemEmoji}</span>
-                                      <span className="text-text-primary">{reservation.itemName}</span>
-                                      <span className="text-text-secondary">
-                                        ({reservation.quantity}x de {reservation.suggestedQuantity})
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="text-sm text-gray-400 italic">
-                                  Nenhum presente reservado
-                                </span>
-                              )}
-                            </td>
-                          )}
+                          <td className="px-4 py-3 text-center">
+                            {hasReservations ? (
+                              <button
+                                onClick={() => handleViewUserDetails(user)}
+                                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200 transition-colors"
+                              >
+                                Ver Detalhes
+                              </button>
+                            ) : (
+                              <span className="text-gray-400 text-sm">-</span>
+                            )}
+                          </td>
                         </tr>
                       );
                     })
